@@ -1,4 +1,3 @@
-
 from pyspark.sql import SparkSession
 
 spark = SparkSession \
@@ -11,18 +10,19 @@ df = spark \
     .readStream \
     .format("kafka") \
     .option("kafka.bootstrap.servers", "localhost:9092") \
-    .option("subscribe", "test_tweets") \
+    .option("subscribe", "test_tweet") \
     .load()
 
 # for fun
-spark.sparkContext.setCheckpointDir('/is459-project/spark-checkpoint')
+# spark.sparkContext.setCheckpointDir('/is459-project/spark-checkpoint')
 
+<<<<<<< Updated upstream
 #!! WARNING !! THIS RUNS FOREVER
 # supposedly creates a sink for the stream  
+=======
+# pipes output to console
+>>>>>>> Stashed changes
 df.selectExpr("CAST(key AS STRING)", "CAST(value AS STRING)") \
     .writeStream \
-    .format("kafka") \
-    .option("kafka.bootstrap.servers", "localhost:9092") \
-    .option("checkpointLocation", "/is459-project/spark-checkpoint") \
-    .option("topic", "test_tweets") \
+    .format("console") \
     .start() 
