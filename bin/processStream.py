@@ -54,6 +54,7 @@ def main():
             
     ###################################
 
+    #TODO: put in .env
     consumer_key= 'xsoYzI8TDAGyZQBIhaE6gY5ZI'
     consumer_secret= 'iOYYy64CazvdHiGZZgGpUhguowpPjVzGa59XGlCTF8MaA0xAoI'
     access_token= '2365205522-hkfTmRYn8qXxBnUqWFE6MV0XQPwr7rYqXDWcFLy'
@@ -63,6 +64,7 @@ def main():
     auth.set_access_token(access_token, access_token_secret)
 
     # Define the search term and the date_since date as variables
+    #TODO: API Tweepy.stream API to latest version
     twitter_stream = Stream(auth, TweetListener(conf, topic))
     query_terms = ['fashion', 'shein']
     twitter_stream.filter(track=query_terms)
