@@ -1,3 +1,9 @@
+#!! command to run this script line by line in pyspark shell
+
+####
+# pyspark --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2
+####
+
 from pyspark.sql import SparkSession
 
 spark = SparkSession \
@@ -13,12 +19,12 @@ df = spark \
     .option("subscribe", "test_tweet") \
     .load()
 
-# for fun
-# spark.sparkContext.setCheckpointDir('/is459-project/spark-checkpoint')
 
-#!! WARNING !! THIS RUNS FOREVER
-# supposedly creates a sink for the stream  
+# pipes real-time stream into console (for testing)
 df.selectExpr("CAST(key AS STRING)", "CAST(value AS STRING)") \
     .writeStream \
     .format("console") \
     .start() 
+
+# TODO: create batch queries
+# TODO: pipe real-time stream and batch queries into analyses (sentiment scoring, topic modeling)
