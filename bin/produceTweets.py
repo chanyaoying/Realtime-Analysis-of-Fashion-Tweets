@@ -31,7 +31,7 @@ class TweetListener(StreamListener):
         try:
             # write to kafka producer
             result = json.dumps(data)
-            self.producer.produce(self.topic, key="key", value=result, callback=acked)
+            self.producer.produce(self.topic, key="key", value=result, callback=acked) 
         except BaseException as e:
             print("Error on_data: %s" % str(e))
         return True
@@ -64,6 +64,7 @@ def main():
     auth.set_access_token(access_token, access_token_secret)
 
     # Define the search term and the date_since date as variables
+    
     #TODO: API Tweepy.stream API to latest version
     twitter_stream = Stream(auth, TweetListener(conf, topic))
     query_terms = ['fashion', 'shein']
