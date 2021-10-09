@@ -16,12 +16,8 @@ df = spark \
 # for fun
 # spark.sparkContext.setCheckpointDir('/is459-project/spark-checkpoint')
 
-<<<<<<< Updated upstream
 #!! WARNING !! THIS RUNS FOREVER
 # supposedly creates a sink for the stream  
-=======
-# pipes output to console
->>>>>>> Stashed changes
 df.selectExpr("CAST(key AS STRING)", "CAST(value AS STRING)") \
     .writeStream \
     .format("console") \
