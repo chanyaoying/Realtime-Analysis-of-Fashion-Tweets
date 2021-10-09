@@ -1,21 +1,14 @@
 """Generates a twitter stream to Kafka"""
 
 import os
-import tweepy as tw
-import pandas as pd
 import argparse
 import json
-import sys
-import time
 import socket
-from dotenv import load_dotenv
 from confluent_kafka import Producer, KafkaError, KafkaException
 from tweepy.streaming import StreamListener
 from tweepy import Stream
 from tweepy.streaming import StreamListener
 from tweepy import OAuthHandler
-
-load_dotenv("/.env")
 
 #############################
 ## HELPER FUNCTIONS
@@ -71,7 +64,7 @@ def main():
 
     # Define the search term and the date_since date as variables
     twitter_stream = Stream(auth, TweetListener(conf, topic))
-    query_terms = ['covid', 'corona', '19']
+    query_terms = ['fashion', 'shein']
     twitter_stream.filter(track=query_terms)
 
     #####################################################
