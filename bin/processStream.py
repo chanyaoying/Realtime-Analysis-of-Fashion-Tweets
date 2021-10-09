@@ -29,6 +29,10 @@ def msg_process(msg):
 
 output_file = 'Tweets_covid.txt'
 class MyListener(StreamListener):
+    def __init__(self):
+        # initialise the kafka consumer
+        print('yo')
+        
     def on_data(self, data):
         try:
             # IMPORTANT: 'a' for appending to the existing file content
