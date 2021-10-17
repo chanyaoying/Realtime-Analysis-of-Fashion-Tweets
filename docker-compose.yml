@@ -21,14 +21,3 @@ services:
     restart: on-failure
     depends_on:
       - zookeeper
-
-  # master:
-  #   image: actionml/spark:latest
-  #   command: master
-  #   ports:
-  #     - 8080:8080
-
-  # drill:
-  #   image: apache/drill:1.19.0
-  #   ports:
-  #     - 8047:8047
