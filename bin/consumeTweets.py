@@ -16,7 +16,7 @@ df = spark \
     .readStream \
     .format("kafka") \
     .option("kafka.bootstrap.servers", "localhost:9092") \
-    .option("subscribe", "test_tweet") \
+    .option("subscribe", "test_tweets") \
     .load()
 
 
