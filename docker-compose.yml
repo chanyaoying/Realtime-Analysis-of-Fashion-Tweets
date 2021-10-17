@@ -28,3 +28,7 @@ services:
     ports:
       - 8080:8080
 
+  drill:
+    image: apache/drill:latest
+    ports:
+      - 8047:8047
