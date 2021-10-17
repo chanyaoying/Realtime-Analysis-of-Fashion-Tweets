@@ -24,9 +24,9 @@ df = spark \
 #     window(df.timestamp, "2 minutes", "1 minutes"),
 #     df.value).count()
 
-windowed = df.withWatermark("timestamp", "1 year")
+windowed = df.withWatermark("timestamp", "30 days")
     
-windowed.groupBy(window(df.timestamp, "1 year", "2years"), df.value).count()
+windowed.groupBy(window(df.timestamp, "30 days", "15 days"), df.value).count()
 
 # pipes real-time stream into console (for testing)
 windowed.writeStream \
