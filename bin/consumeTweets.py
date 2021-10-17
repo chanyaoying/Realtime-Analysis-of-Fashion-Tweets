@@ -2,6 +2,8 @@
 
 ####
 # pyspark --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2
+# OR
+# $SPARK_HOME/bin/spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2 ./bin/consumeTweets.py 
 ####
 
 from pyspark.sql import SparkSession
@@ -25,16 +27,15 @@ df = spark \
 #     df.value).count()
 
 windowed = df.withWatermark("timestamp", "30 days")
-    
 windowed.groupBy(window(df.timestamp, "30 days", "15 days"), df.value).count()
 
 # pipes real-time stream into console (for testing)
-windowed.writeStream \
+query = windowed.writeStream \
     .outputMode("append") \
     .format("console") \
     .start()
 
-windowed.awaitTermination()
+query.awaitTermination()
 
 # TODO: create batch queries
 # TODO: pipe real-time stream and batch queries into analyses (sentiment scoring, topic modeling)
