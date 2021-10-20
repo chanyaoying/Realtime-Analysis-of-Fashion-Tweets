@@ -26,13 +26,13 @@ class TweetListener(StreamListener):
         # initialise the kafka producer 
         self.producer = Producer(conf)
         self.topic = topic
+        self.tweet_count = 0
         
     def on_data(self, data):
         try:
-            
-            # todos: parse json result and clean/process the result 
-
             self.producer.produce(self.topic, key="key", value=data, callback=acked) 
+            self.tweet_count += 1
+            print(f"No. of tweets: {self.tweet_count}")
         except BaseException as e:
             print("Error on_data: %s" % str(e))
         return True

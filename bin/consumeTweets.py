@@ -20,17 +20,17 @@ df = spark \
     .format("kafka") \
     .option("kafka.bootstrap.servers", "localhost:9092") \
     .option("subscribe", "test_tweets") \
+    .option("includeTimestamp", "true") \
     .load()
 
-# windowedCounts = df.groupBy(
-#     window(df.timestamp, "2 minutes", "1 minutes"),
-#     df.value).count()
-
-windowed = df.withWatermark("timestamp", "30 days")
-windowed.groupBy(window(df.timestamp, "30 days", "15 days"), df.value).count()
+windowedCounts = df.withWatermark("timestamp", "30 seconds") \
+    .groupBy(
+        window("timestamp", "30 seconds", "15 seconds"), df.value
+    ) \
+    .count()
 
 # pipes real-time stream into console (for testing)
-query = windowed.writeStream \
+query = windowedCounts.writeStream \
     .outputMode("append") \
     .format("console") \
     .start()
