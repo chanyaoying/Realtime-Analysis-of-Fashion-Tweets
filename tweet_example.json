@@ -1,0 +1,295 @@
+{
+    "created_at": "Mon Nov 08 11:07:02 +0000 2021",
+    "id": 1457665965647220741,
+    "id_str": "1457665965647220741",
+    "text": "\u308f\u30fc\u53ef\u611b\u3044\u53ef\u611b\u3044\u53ef\u611b\u3044\uff01",
+    "source": "\u003ca href=\"http:\/\/twitter.com\/download\/iphone\" rel=\"nofollow\"\u003eTwitter for iPhone\u003c\/a\u003e",
+    "truncated": false,
+    "in_reply_to_status_id": null,
+    "in_reply_to_status_id_str": null,
+    "in_reply_to_user_id": null,
+    "in_reply_to_user_id_str": null,
+    "in_reply_to_screen_name": null,
+    "user": {
+        "id": 1144152333556699136,
+        "id_str": "1144152333556699136",
+        "name": "\u307d\u3066\u307e\u308b",
+        "screen_name": "potatototo55",
+        "location": null,
+        "url": null,
+        "description": "\u597d\u304d\u306a\u3053\u3068\u3092\u597d\u304d\u306a\u3088\u3046\u306b\u545f\u304f\u30a2\u30ab\u30a6\u30f3\u30c8\ud83d\udc81\u200d\u2640\ufe0f\ud83d\udc96\ud83d\udc96",
+        "translator_type": "none",
+        "protected": false,
+        "verified": false,
+        "followers_count": 0,
+        "friends_count": 22,
+        "listed_count": 0,
+        "favourites_count": 23,
+        "statuses_count": 14,
+        "created_at": "Thu Jun 27 07:55:48 +0000 2019",
+        "utc_offset": null,
+        "time_zone": null,
+        "geo_enabled": false,
+        "lang": null,
+        "contributors_enabled": false,
+        "is_translator": false,
+        "profile_background_color": "F5F8FA",
+        "profile_background_image_url": "",
+        "profile_background_image_url_https": "",
+        "profile_background_tile": false,
+        "profile_link_color": "1DA1F2",
+        "profile_sidebar_border_color": "C0DEED",
+        "profile_sidebar_fill_color": "DDEEF6",
+        "profile_text_color": "333333",
+        "profile_use_background_image": true,
+        "profile_image_url": "http:\/\/pbs.twimg.com\/profile_images\/1453962154546429952\/s1Tv7q1I_normal.jpg",
+        "profile_image_url_https": "https:\/\/pbs.twimg.com\/profile_images\/1453962154546429952\/s1Tv7q1I_normal.jpg",
+        "profile_banner_url": "https:\/\/pbs.twimg.com\/profile_banners\/1144152333556699136\/1635166398",
+        "default_profile": true,
+        "default_profile_image": false,
+        "following": null,
+        "follow_request_sent": null,
+        "notifications": null,
+        "withheld_in_countries": []
+    },
+    "geo": null,
+    "coordinates": null,
+    "place": null,
+    "contributors": null,
+    "quoted_status_id": 1457649114355621888,
+    "quoted_status_id_str": "1457649114355621888",
+    "quoted_status": {
+        "created_at": "Mon Nov 08 10:00:05 +0000 2021",
+        "id": 1457649114355621888,
+        "id_str": "1457649114355621888",
+        "text": "\u30ac\u30e9\u30b9\u30e1\u30fc\u30ab\u30fc\u300c\u30cf\u30ea\u30aa\u300d\u304c\u4f5c\u308b\u201c\u30d5\u30e9\u30ef\u30fc\uff06\u96ea\u7389\u201d\u30a4\u30e1\u30fc\u30b8\u306e\u30ac\u30e9\u30b9\u30d4\u30a2\u30b9\u3084\u30ea\u30f3\u30b0 - https:\/\/t.co\/lVIVFvrh6a https:\/\/t.co\/P8Nh9cysAL",
+        "display_text_range": [0, 65],
+        "source": "\u003ca href=\"http:\/\/www.fashion-press.net\/\" rel=\"nofollow\"\u003eFashion Press\u003c\/a\u003e",
+        "truncated": false,
+        "in_reply_to_status_id": null,
+        "in_reply_to_status_id_str": null,
+        "in_reply_to_user_id": null,
+        "in_reply_to_user_id_str": null,
+        "in_reply_to_screen_name": null,
+        "user": {
+            "id": 168816611,
+            "id_str": "168816611",
+            "name": "Fashion Press",
+            "screen_name": "fashionpressnet",
+            "location": null,
+            "url": "http:\/\/www.fashion-press.net\/",
+            "description": "\u30d5\u30a1\u30c3\u30b7\u30e7\u30f3WEB\u30de\u30ac\u30b8\u30f3\u300c\u30d5\u30a1\u30c3\u30b7\u30e7\u30f3\u30d7\u30ec\u30b9\u300d\u516c\u5f0f\u30a2\u30ab\u30a6\u30f3\u30c8\u3002 \u3010Instagram\u3011http:\/\/instagram.com\/fashionpressjp\u3010Facebook\u3011http:\/\/www.facebook.com\/FashionPress.net",
+            "translator_type": "none",
+            "protected": false,
+            "verified": true,
+            "followers_count": 3554312,
+            "friends_count": 1,
+            "listed_count": 12933,
+            "favourites_count": 0,
+            "statuses_count": 163690,
+            "created_at": "Tue Jul 20 21:38:17 +0000 2010",
+            "utc_offset": null,
+            "time_zone": null,
+            "geo_enabled": false,
+            "lang": null,
+            "contributors_enabled": false,
+            "is_translator": false,
+            "profile_background_color": "F5F8FA",
+            "profile_background_image_url": "http:\/\/abs.twimg.com\/images\/themes\/theme14\/bg.gif",
+            "profile_background_image_url_https": "https:\/\/abs.twimg.com\/images\/themes\/theme14\/bg.gif",
+            "profile_background_tile": false,
+            "profile_link_color": "343738",
+            "profile_sidebar_border_color": "FFFFFF",
+            "profile_sidebar_fill_color": "DDEEF6",
+            "profile_text_color": "333333",
+            "profile_use_background_image": true,
+            "profile_image_url": "http:\/\/pbs.twimg.com\/profile_images\/890882778878758913\/U37FSz9D_normal.jpg",
+            "profile_image_url_https": "https:\/\/pbs.twimg.com\/profile_images\/890882778878758913\/U37FSz9D_normal.jpg",
+            "profile_banner_url": "https:\/\/pbs.twimg.com\/profile_banners\/168816611\/1553566968",
+            "default_profile": false,
+            "default_profile_image": false,
+            "following": null,
+            "follow_request_sent": null,
+            "notifications": null,
+            "withheld_in_countries": []
+        },
+        "geo": null,
+        "coordinates": null,
+        "place": null,
+        "contributors": null,
+        "is_quote_status": false,
+        "quote_count": 39,
+        "reply_count": 0,
+        "retweet_count": 518,
+        "favorite_count": 2408,
+        "entities": {
+            "hashtags": [],
+            "urls": [{
+                "url": "https:\/\/t.co\/lVIVFvrh6a",
+                "expanded_url": "https:\/\/www.fashion-press.net\/news\/80339",
+                "display_url": "fashion-press.net\/news\/80339",
+                "indices": [42, 65]
+            }],
+            "user_mentions": [],
+            "symbols": [],
+            "media": [{
+                "id": 1457649112133042176,
+                "id_str": "1457649112133042176",
+                "indices": [66, 89],
+                "media_url": "http:\/\/pbs.twimg.com\/media\/FDqcJP_agAA6Lhn.jpg",
+                "media_url_https": "https:\/\/pbs.twimg.com\/media\/FDqcJP_agAA6Lhn.jpg",
+                "url": "https:\/\/t.co\/P8Nh9cysAL",
+                "display_url": "pic.twitter.com\/P8Nh9cysAL",
+                "expanded_url": "https:\/\/twitter.com\/fashionpressnet\/status\/1457649114355621888\/photo\/1",
+                "type": "photo",
+                "sizes": {
+                    "thumb": {
+                        "w": 150,
+                        "h": 150,
+                        "resize": "crop"
+                    },
+                    "medium": {
+                        "w": 749,
+                        "h": 1000,
+                        "resize": "fit"
+                    },
+                    "small": {
+                        "w": 509,
+                        "h": 680,
+                        "resize": "fit"
+                    },
+                    "large": {
+                        "w": 749,
+                        "h": 1000,
+                        "resize": "fit"
+                    }
+                }
+            }]
+        },
+        "extended_entities": {
+            "media": [{
+                "id": 1457649112133042176,
+                "id_str": "1457649112133042176",
+                "indices": [66, 89],
+                "media_url": "http:\/\/pbs.twimg.com\/media\/FDqcJP_agAA6Lhn.jpg",
+                "media_url_https": "https:\/\/pbs.twimg.com\/media\/FDqcJP_agAA6Lhn.jpg",
+                "url": "https:\/\/t.co\/P8Nh9cysAL",
+                "display_url": "pic.twitter.com\/P8Nh9cysAL",
+                "expanded_url": "https:\/\/twitter.com\/fashionpressnet\/status\/1457649114355621888\/photo\/1",
+                "type": "photo",
+                "sizes": {
+                    "thumb": {
+                        "w": 150,
+                        "h": 150,
+                        "resize": "crop"
+                    },
+                    "medium": {
+                        "w": 749,
+                        "h": 1000,
+                        "resize": "fit"
+                    },
+                    "small": {
+                        "w": 509,
+                        "h": 680,
+                        "resize": "fit"
+                    },
+                    "large": {
+                        "w": 749,
+                        "h": 1000,
+                        "resize": "fit"
+                    }
+                }
+            }, {
+                "id": 1457649112250470400,
+                "id_str": "1457649112250470400",
+                "indices": [66, 89],
+                "media_url": "http:\/\/pbs.twimg.com\/media\/FDqcJQbaUAA_sHB.jpg",
+                "media_url_https": "https:\/\/pbs.twimg.com\/media\/FDqcJQbaUAA_sHB.jpg",
+                "url": "https:\/\/t.co\/P8Nh9cysAL",
+                "display_url": "pic.twitter.com\/P8Nh9cysAL",
+                "expanded_url": "https:\/\/twitter.com\/fashionpressnet\/status\/1457649114355621888\/photo\/1",
+                "type": "photo",
+                "sizes": {
+                    "large": {
+                        "w": 1000,
+                        "h": 666,
+                        "resize": "fit"
+                    },
+                    "medium": {
+                        "w": 1000,
+                        "h": 666,
+                        "resize": "fit"
+                    },
+                    "small": {
+                        "w": 680,
+                        "h": 453,
+                        "resize": "fit"
+                    },
+                    "thumb": {
+                        "w": 150,
+                        "h": 150,
+                        "resize": "crop"
+                    }
+                }
+            }, {
+                "id": 1457649112246263808,
+                "id_str": "1457649112246263808",
+                "indices": [66, 89],
+                "media_url": "http:\/\/pbs.twimg.com\/media\/FDqcJQaaIAAE17N.jpg",
+                "media_url_https": "https:\/\/pbs.twimg.com\/media\/FDqcJQaaIAAE17N.jpg",
+                "url": "https:\/\/t.co\/P8Nh9cysAL",
+                "display_url": "pic.twitter.com\/P8Nh9cysAL",
+                "expanded_url": "https:\/\/twitter.com\/fashionpressnet\/status\/1457649114355621888\/photo\/1",
+                "type": "photo",
+                "sizes": {
+                    "thumb": {
+                        "w": 150,
+                        "h": 150,
+                        "resize": "crop"
+                    },
+                    "small": {
+                        "w": 510,
+                        "h": 680,
+                        "resize": "fit"
+                    },
+                    "medium": {
+                        "w": 750,
+                        "h": 1000,
+                        "resize": "fit"
+                    },
+                    "large": {
+                        "w": 750,
+                        "h": 1000,
+                        "resize": "fit"
+                    }
+                }
+            }]
+        },
+        "favorited": false,
+        "retweeted": false,
+        "possibly_sensitive": false,
+        "filter_level": "low",
+        "lang": "ja"
+    },
+    "quoted_status_permalink": {
+        "url": "https:\/\/t.co\/wZ59p9DY5N",
+        "expanded": "https:\/\/twitter.com\/fashionpressnet\/status\/1457649114355621888",
+        "display": "twitter.com\/fashionpressne\u2026"
+    },
+    "is_quote_status": true,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "favorite_count": 0,
+    "entities": {
+        "hashtags": [],
+        "urls": [],
+        "user_mentions": [],
+        "symbols": []
+    },
+    "favorited": false,
+    "retweeted": false,
+    "filter_level": "low",
+    "lang": "ja",
+    "timestamp_ms": "1636369622991"
+}
