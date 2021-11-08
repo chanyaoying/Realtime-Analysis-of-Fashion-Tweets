@@ -7,6 +7,7 @@ services:
       - ZOOKEEPER_CLIENT_PORT=32181
     ports:
       - "32181:32181"
+    container_name: Zookeeper
 
   kafka:
     image: confluentinc/cp-kafka:6.2.0
@@ -21,3 +22,25 @@ services:
     restart: on-failure
     depends_on:
       - zookeeper
+    container_name: Kafka
+
+  mongo:
+    image: mongo
+    restart: always
+    ports:
+      - 27017:27017
+    container_name: MongoDB
+
+  dril:
+    image: apache/drill
+    ports:
+      - "8047:8047"
+      - "31010:31010"
+    container_name: Apache_Drill
+    depends_on: 
+      - mongo
+    stdin_open: true 
+    tty: true
+    
+
+
