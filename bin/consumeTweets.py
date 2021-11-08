@@ -21,6 +21,7 @@ df = spark \
     .option("kafka.bootstrap.servers", "localhost:9092") \
     .option("subscribe", "test_tweets") \
     .option("includeTimestamp", "true") \
+    .option("startingOffsets", "earliest") \
     .load()
 
 windowedCounts = df.withWatermark("timestamp", "30 seconds") \
