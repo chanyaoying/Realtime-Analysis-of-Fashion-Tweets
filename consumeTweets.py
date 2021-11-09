@@ -9,10 +9,15 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.types import StringType
 from pymongo import MongoClient
-from pyspark.sql.functions import udf, from_json, col, window
-from pyspark.sql.types import StringType, StructType, StructField, ArrayType
+# from pyspark.sql.functions import udf, from_json, col, window
+# from pyspark.sql.types import StringType, StructType, StructField, ArrayType
 from datetime import datetime
 import re
+from textblob import TextBlob
+from pyspark.sql.functions import *
+from pyspark.sql.types import *
+from pyspark.sql import functions as F
+
 
 
 #####################################
@@ -41,14 +46,46 @@ db = client.realtime_tweets_analysis
 #####################################
 
 # Changing datetime format
-date_process = udf( \
+data_process = udf( \
     lambda x: datetime.strftime( \
         datetime.strptime(x,'%a %b %d %H:%M:%S +0000 %Y'), '%Y-%m-%d %H:%M:%S'))
 
 # Text Cleaning
-pre_process = udf( \
-    lambda x: re.sub(r'[^A-Za-z\n ]|(http\S+)|(www.\S+)', '', \
-        x.lower().strip()).split(), ArrayType(StringType()))
+# pre_process = udf( \
+#     lambda x: re.sub(r'[^A-Za-z\n ]|(http\S+)|(www.\S+)|(@\w+)|(#)|(rt)|(:)', '', \
+#         x.lower().strip()).split(), ArrayType(StringType()))
+
+
+def preprocessing(lines):
+    words = lines.select(explode(split(lines.text, "t_end")).alias("word"), "created_at")
+    words = words.na.replace('', None)
+    words = words.na.drop()
+    words = words.withColumn('word', F.regexp_replace('word', r'http\S+', ''))
+    words = words.withColumn('word', F.regexp_replace('word', '@\w+', ''))
+    words = words.withColumn('word', F.regexp_replace('word', '#', ''))
+    words = words.withColumn('word', F.regexp_replace('word', 'RT', ''))
+    words = words.withColumn('word', F.regexp_replace('word', ':', ''))
+    return words
+
+# text classification
+def polarity_detection(text):
+    return TextBlob(text).sentiment.polarity
+def subjectivity_detection(text):
+    return TextBlob(text).sentiment.subjectivity
+def sentiment_detection(text):
+    return TextBlob(text).sentiment
+def text_classification(words):
+    # polarity detection
+    polarity_detection_udf = udf(polarity_detection, StringType())
+    words = words.withColumn("polarity", polarity_detection_udf("word"))
+    # subjectivity detection
+    subjectivity_detection_udf = udf(subjectivity_detection, StringType())
+    words = words.withColumn("subjectivity", subjectivity_detection_udf("word"))
+    # sentiment score
+    sentiment_detection_udf = udf(sentiment_detection, StringType())
+    words = words.withColumn("sentiment", sentiment_detection_udf("word"))
+
+    return words
 
 
 #####################################
@@ -85,8 +122,7 @@ df = spark \
     .selectExpr("CAST(timestamp AS TIMESTAMP) as timestamp", "CAST(value AS STRING) as message") \
     .withColumn("value", from_json("message", schema)) \
     .select('timestamp', 'value.*') \
-    .withColumn("created_at", date_process("created_at")) \
-    .withColumn("cleaned_data", pre_process("text")) \
+    .withColumn("created_at", data_process("created_at")) \
     .dropna()
 
 # remove text from other languages
@@ -117,8 +153,13 @@ df = spark \
     b. Save it in MongoDB, under the collection sentimentScoring
 """
 
+words = preprocessing(df)
+words = text_classification(words)
+words = words.repartition(1)
+
+
 #!! Write to console (for now)
-sentiment_scoring = df \
+words_query = words \
     .writeStream \
     .format("console") \
     .outputMode("append") \
@@ -144,5 +185,5 @@ sentiment_scoring = df \
 # # Await termination for both queries
 # ####################################
 
-sentiment_scoring.awaitTermination()
+words_query.awaitTermination()
 # topic_modelling_output.awaitTermination()

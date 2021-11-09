@@ -9,7 +9,7 @@ from pyspark.ml.feature import Tokenizer, StopWordsRemover
 # HELPER FUNCTIONS
 ##############################
 
-
+ 
 def parse_data_from_kafka_message(sdf, schema):
     assert sdf.isStreaming == True, "DataFrame doesn't receive streaming data"
     sdf = sdf.withColumn('value', from_json(col('value'), schema))
