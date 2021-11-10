@@ -19,8 +19,8 @@ from pyspark.sql.types import StringType, StructType, StructField, ArrayType
 from textblob import TextBlob
 
 from pyspark.ml import Pipeline
-from sparknlp.base import *
-from sparknlp.annotator import *
+# from sparknlp.base import *
+# from sparknlp.annotator import *
 
 
 #####################################
@@ -116,6 +116,22 @@ def insert_to_DB(batchDF, epochID):
 # PREPROCESSING
 #####################################
 
+# Function to convert JSON array string to a list
+import json
+
+def parse_json(array_str):
+    json_obj = json.loads(array_str)
+    for item in json_obj:
+        yield (item["a"], item["b"])
+
+json_schema = ArrayType(StructType([StructField('text', StringType(
+), nullable=False), StructField('indices', ArrayType(StringType()), nullable=False)]))
+
+# Define udf
+from pyspark.sql.functions import udf
+
+udf_parse_json = udf(lambda str: parse_json(str), json_schema)
+
 # Subscribe to 1 kafka topic
 
 schema = StructType(
@@ -154,8 +170,9 @@ df = spark \
     .select('timestamp', 'created_at', 'text', 'entities.*') \
     .withColumn('hashtags', from_json('entities', extended_extended_tweet_schema)) \
     .select('timestamp', 'created_at', 'text', 'hashtags.*') \
-    .select('timestamp', 'created_at', 'text', transform('hashtags', lambda n: n['text'])) \
-    .dropna()
+    .select('timestamp', 'created_at', 'text', udf_parse_json('hashtags').alias("hashtags")) \
+    # .select('timestamp', 'created_at', 'text', transform('hashtags', lambda n: n['text'])) \
+    # .dropna()
 
     # .withColumn('hashtags', from_json('hashtags', extended_extended_extended_tweet_schema)) \
     # .select('timestamp', 'created_at', 'text', 'hashtags') \
@@ -198,29 +215,29 @@ words_query = df \
 3. 
 """
 
-documentAssembler = DocumentAssembler() \
-    .setInputCol('text') \
-    .setOutputCol('document')
+# documentAssembler = DocumentAssembler() \
+#     .setInputCol('text') \
+#     .setOutputCol('document')
 
-sentenceDetector = SentenceDetector() \
-    .setInputCols(["document"]) \
-    .setOutputCol("sentence")
+# sentenceDetector = SentenceDetector() \
+#     .setInputCols(["document"]) \
+#     .setOutputCol("sentence")
 
-regexTokenizer = Tokenizer() \
-    .setInputCols(["sentence"]) \
-    .setOutputCol("token")
+# regexTokenizer = Tokenizer() \
+#     .setInputCols(["sentence"]) \
+#     .setOutputCol("token")
 
-finisher = Finisher() \
-    .setInputCols(["token"]) \
-    .setCleanAnnotations(False)
+# finisher = Finisher() \
+#     .setInputCols(["token"]) \
+#     .setCleanAnnotations(False)
 
-pipeline = Pipeline() \
-    .setStages([
-        documentAssembler,
-        sentenceDetector,
-        regexTokenizer,
-        finisher
-    ])
+# pipeline = Pipeline() \
+#     .setStages([
+#         documentAssembler,
+#         sentenceDetector,
+#         regexTokenizer,
+#         finisher
+#     ])
 
 # lemmatise
 
