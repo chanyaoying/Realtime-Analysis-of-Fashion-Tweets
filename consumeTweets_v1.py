@@ -34,7 +34,7 @@ import pyspark
 from nltk.corpus import stopwords
 # stuff we'll need for building the model
 from pyspark.mllib.linalg import Vector, Vectors
-from pyspark.mllib.clustering import LDA, LDAModel
+from pyspark.ml.clustering import LDA
 
 
 
@@ -179,17 +179,17 @@ df = spark \
     b. Save it in MongoDB, under the collection sentimentScoring
 """
 
-words = preprocessing(df)
-words = text_classification(words)
-words = words.repartition(1)
+# words = preprocessing(df)
+# words = text_classification(words)
+# words = words.repartition(1)
 
 
-#!! Write to console (for now)
-words_query = words \
-    .writeStream \
-    .format("console") \
-    .outputMode("append") \
-    .start()
+# #!! Write to console (for now)
+# words_query = words \
+#     .writeStream \
+#     .format("console") \
+#     .outputMode("append") \
+#     .start()
 
 
 #####################################
@@ -250,15 +250,47 @@ nlp_model = nlp_pipeline.fit(cleaned_df)
 # apply the pipeline to transform dataframe.
 processed_df  = nlp_model.transform(cleaned_df)
 
-tokens_df = processed_df.select('created_at','tokens').limit(10000)
+tokens_df = processed_df.select('created_at','tokens')
 
 
-### STEP 2: FEATURE ENGINEERING ----------------------------------------------------------------------------------------------
-cv = CountVectorizer(inputCol="tokens", outputCol="raw_features", vocabSize=5000, minDF=10.0)
+cv = CountVectorizer() \
+    .setInputCol("tokens") \
+    .setOutputCol("features") \
+    .setVocabSize(500) \
+    .setMinDF(3.0)
+
+def build_LDA_model(batchDF, epochID):
+    ### STEP 2: FEATURE ENGINEERING ------------------------------------------------------------
+    cv_model = cv.fit(batchDF)
+    vectorized_tokens = cv_model.transform(batchDF)
+
+    num_topics = 3
+    # lda = LDA(k=num_topics, maxIter=10)
+    lda = LDA(k=num_topics, maxIter=10)
+    model = lda.fit(vectorized_tokens)
+    ll = model.logLikelihood(vectorized_tokens)
+    lp = model.logPerplexity(vectorized_tokens)
+
+    # extract vocabulary from CountVectorizer
+    vocab = cv_model.vocabulary
+    topics = model.describeTopics()   
+    topics_rdd = topics.rdd
+    topics_words = topics_rdd \
+        .map(lambda row: row['termIndices']) \
+        .map(lambda idx_list: [vocab[idx] for idx in idx_list])\
+        .take(10)
+
+
+
+topic_modelling_query = tokens_df.writeStream \
+    .outputMode("append") \
+    .foreachBatch(build_LDA_model) \
+    .start()
+
 # train the model
-cv_model = cv.fit(tokens_df)
+
 # transform the data. Output column name will be features.
-vectorized_tokens = cv_model.transform(tokens_df)
+
 
 # # IDF
 # idf = IDF(inputCol="raw_features", outputCol="features")
@@ -295,16 +327,16 @@ vectorized_tokens = cv_model.transform(tokens_df)
 #     .start()
 
 # for testing purposes
-topic_modelling_query = vectorized_tokens \
-    .writeStream \
-    .format("console") \
-    .outputMode("append") \
-    .start()
+# topic_modelling_query = vectorized_tokens \
+#     .writeStream \
+#     .format("console") \
+#     .outputMode("append") \
+#     .start()
 
 
 # ####################################
 # # Await termination for both queries
 # ####################################
 
-words_query.awaitTermination()
+# words_query.awaitTermination()
 topic_modelling_query.awaitTermination()
