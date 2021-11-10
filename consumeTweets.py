@@ -7,7 +7,6 @@
 ####
 import json
 from datetime import datetime
-import re
 
 from pymongo import MongoClient
 
@@ -120,12 +119,23 @@ def insert_to_DB(batchDF, epochID):
 import json
 
 def parse_json(array_str):
-    json_obj = json.loads(array_str)
-    for item in json_obj:
-        yield (item["a"], item["b"])
+    t = type(array_str)
+    if array_str:
+        if t == str:
+            json_obj = json.loads(array_str)
+        else:
+            json_obj = array_str
+        
+        hashtags_array = []
+        for item in json_obj:
+            item = json.loads(item)
+            hashtags_array.append(item["text"])
+        return hashtags_array
 
-json_schema = ArrayType(StructType([StructField('text', StringType(
-), nullable=False), StructField('indices', ArrayType(StringType()), nullable=False)]))
+# json_schema = ArrayType(StructType([StructField('text', StringType(
+# ), nullable=False), StructField('indices', ArrayType(StringType()), nullable=False)]))
+
+json_schema = ArrayType(StringType())
 
 # Define udf
 from pyspark.sql.functions import udf
@@ -171,9 +181,11 @@ df = spark \
     .withColumn('hashtags', from_json('entities', extended_extended_tweet_schema)) \
     .select('timestamp', 'created_at', 'text', 'hashtags.*') \
     .select('timestamp', 'created_at', 'text', udf_parse_json('hashtags').alias("hashtags")) \
-    # .select('timestamp', 'created_at', 'text', transform('hashtags', lambda n: n['text'])) \
-    # .dropna()
+    .dropna()
 
+    # .withColumn('hashtags', from_json('entities', extended_extended_tweet_schema)) \
+    # .select('timestamp', 'created_at', 'text', 'hashtags.*') \
+    # .select('timestamp', 'created_at', 'text', transform('hashtags', lambda n: from_json(n, extended_tweet_schema))) \
     # .withColumn('hashtags', from_json('hashtags', extended_extended_extended_tweet_schema)) \
     # .select('timestamp', 'created_at', 'text', 'hashtags') \
 
