@@ -4,7 +4,7 @@
 # pyspark --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2
 # OR
 # $SPARK_HOME/bin/spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2 consumeTweets.py 
-# spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2,com.johnsnowlabs.nlp:spark-nlp_2.12:3.3.2,com.github.fommil.netlib:all:1.1.2 consumeTweets_v1.py
+# spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2,com.johnsnowlabs.nlp:spark-nlp_2.12:3.3.2 consumeTweets.py
 ####
 
 from pyspark.sql import SparkSession
@@ -33,6 +33,7 @@ import pyspark
 # stuff we'll need for text processing
 from nltk.corpus import stopwords
 # stuff we'll need for building the model
+from pyspark.mllib.linalg import Vector, Vectors
 from pyspark.ml.clustering import LDA
 
 
@@ -62,6 +63,11 @@ db = client.realtime_tweets_analysis
 # HELPER FUNCTIONS
 #####################################
 
+# Changing datetime format
+# date_process = udf( \
+#     lambda x: datetime.strftime( \
+#         datetime.strptime(x,'%a %b %d %H:%M:%S +0000 %Y'), '%Y-%m-%d %H:%M:%S'))
+
 # define process function
 my_punctuation = '!"$%&\'()*+,-./:;<=>?[\\]^_`{|}~•@â'
 def remove_links(tweet):
@@ -90,12 +96,10 @@ remove_punctuation=udf(remove_punctuation)
 remove_number=udf(remove_number)
 remove_hashtag=udf(remove_hashtag)
 
-
 # split lines into words
 def split_lines(lines):
     words = lines.select(explode(split(lines.text_cleaned, "t_end")).alias("word"), "created_at")
     return words
-
 
 # text classification
 def polarity_detection(text):
@@ -175,17 +179,16 @@ SA_cleaned_df=SA_cleaned_df.withColumn('text_cleaned', remove_punctuation(SA_cle
 SA_cleaned_df=SA_cleaned_df.withColumn('text_cleaned', remove_number(SA_cleaned_df['text_cleaned']))
 SA_cleaned_df = SA_cleaned_df.select("text_cleaned", "created_at")
 
-
 words = split_lines(SA_cleaned_df)
 words = text_classification(words)
 words = words.repartition(1)
 
 
-# words_query = words \
-#     .writeStream \
-#     .format("console") \
-#     .outputMode("append") \
-#     .start()
+words_query = words \
+    .writeStream \
+    .format("console") \
+    .outputMode("append") \
+    .start()
 
 
 
@@ -199,7 +202,7 @@ words = words.repartition(1)
 """
 LDA_batches = df.withWatermark('timestamp', watermark_time) \
     .groupBy(
-        window("timestamp", window_interval, trigger_interval), "text", "created_at"
+        window("timestamp", window_interval, trigger_interval), "text","created_at"
     ) \
     .count()
 
@@ -258,7 +261,6 @@ processed_df  = nlp_model.transform(LDA_cleaned_df)
 
 tokens_df = processed_df.select('created_at','tokens')
 
-### STEP 2: FEATURE ENGINEERING ----------------------------------------------------------------------------------
 
 cv = CountVectorizer() \
     .setInputCol("tokens") \
@@ -267,6 +269,7 @@ cv = CountVectorizer() \
     .setMinDF(3.0)
 
 def build_LDA_model(batchDF, epochID):
+    ### STEP 2: FEATURE ENGINEERING ------------------------------------------------------------
     cv_model = cv.fit(batchDF)
     vectorized_tokens = cv_model.transform(batchDF)
     
@@ -276,8 +279,6 @@ def build_LDA_model(batchDF, epochID):
     print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
     vocab = cv_model.vocabulary
     print(vocab)
-
-    ### STEP 3: BUILD THE LDA MODEL ----------------------------------------------------------------------------------
 
     if vocab:
         print('##############################################################')
@@ -290,18 +291,59 @@ def build_LDA_model(batchDF, epochID):
         topics_words = topics_rdd \
             .map(lambda row: row['termIndices']) \
             .map(lambda idx_list: [vocab[idx] for idx in idx_list]) \
-            .collect()
-        print(topics_words)
+            .take(10)
     else:
         print("empty vocab")
     print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
 
 
 
-topic_modelling_query = tokens_df.writeStream \
-    .outputMode("append") \
-    .foreachBatch(build_LDA_model) \
-    .start()
+# topic_modelling_query = LDA_cleaned_df \
+#     .writeStream \
+#     .format("console") \
+#     .outputMode("append") \
+#     .start()
+
+
+
+# topic_modelling_query = tokens_df.writeStream \
+#     .outputMode("append") \
+#     .foreachBatch(build_LDA_model) \
+#     .start()
+
+# train the model
+
+# transform the data. Output column name will be features.
+
+
+# # IDF
+# idf = IDF(inputCol="raw_features", outputCol="features")
+# idfModel = idf.fit(vectorized_tokens)
+# result_tfidf = idfModel.transform(vectorized_tokens) 
+
+### STEP 3: BUILD THE LDA MODEL -------------------------------------------------------------------------------------------------
+# num_topics = 3
+# lda = LDA(k=num_topics, maxIter=10)
+# model = lda.fit(vectorized_tokens)
+# ll = model.logLikelihood(vectorized_tokens)
+# lp = model.logPerplexity(vectorized_tokens)
+
+# num_topics = 10
+# max_iterations = 100
+# lda_model = LDA.train(result_tfidf[['index','features']].map(list), k=num_topics, maxIterations=max_iterations)
+
+### STEP 4: VISUALIZE TOPICS ------------------------------------------------------------------------------------
+# extract vocabulary from CountVectorizer
+# vocab = cv_model.vocabulary
+# topics = model.describeTopics()   
+# topics_rdd = topics.rdd
+# topics_words = topics_rdd\
+#        .map(lambda row: row['termIndices'])\
+#        .map(lambda idx_list: [vocab[idx] for idx in idx_list])\
+#        .collect()
+
+
+
 
 # topic_modelling_output = df.writeStream \
 #     .outputMode('append') \
@@ -320,5 +362,5 @@ topic_modelling_query = tokens_df.writeStream \
 # # Await termination for both queries
 # ####################################
 
-# words_query.awaitTermination()
-topic_modelling_query.awaitTermination()
+words_query.awaitTermination()
+# topic_modelling_query.awaitTermination()
