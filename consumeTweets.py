@@ -91,12 +91,6 @@ remove_number=udf(remove_number)
 remove_hashtag=udf(remove_hashtag)
 
 
-# split lines into words
-def split_lines(lines):
-    words = lines.select(explode(split(lines.text_cleaned, "t_end")).alias("word"), "created_at")
-    return words
-
-
 # text classification
 def polarity_detection(text):
     return TextBlob(text).sentiment.polarity
@@ -107,10 +101,10 @@ def subjectivity_detection(text):
 def text_classification(words):
     # polarity detection
     polarity_detection_udf = udf(polarity_detection, StringType())
-    words = words.withColumn("polarity", polarity_detection_udf("word"))
+    words = words.withColumn("polarity", polarity_detection_udf("text_cleaned"))
     # subjectivity detection
     subjectivity_detection_udf = udf(subjectivity_detection, StringType())
-    words = words.withColumn("subjectivity", subjectivity_detection_udf("word"))
+    words = words.withColumn("subjectivity", subjectivity_detection_udf("text_cleaned"))
 
     return words
 
@@ -222,15 +216,14 @@ SA_cleaned_df=df.withColumn('text_cleaned', remove_links(df['text']))
 SA_cleaned_df=SA_cleaned_df.withColumn('text_cleaned', remove_users(SA_cleaned_df['text_cleaned']))
 SA_cleaned_df=SA_cleaned_df.withColumn('text_cleaned', remove_punctuation(SA_cleaned_df['text_cleaned']))
 SA_cleaned_df=SA_cleaned_df.withColumn('text_cleaned', remove_number(SA_cleaned_df['text_cleaned']))
-SA_cleaned_df = SA_cleaned_df.select("text_cleaned", "created_at")
 
-
-words = split_lines(SA_cleaned_df)
+words = SA_cleaned_df.select("text_cleaned", "created_at", "hashtags")
+# words = words.select(explode(split(words.text_cleaned, "t_end")).alias("word"), "created_at")
 words = text_classification(words)
 words = words.repartition(1)
 
 
-words_query = df \
+words_query = words \
     .writeStream \
     .format("console") \
     .outputMode("append") \
