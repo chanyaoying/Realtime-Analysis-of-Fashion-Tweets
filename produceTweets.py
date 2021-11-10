@@ -68,7 +68,7 @@ def main():
     
     #TODO: API Tweepy.stream API to latest version
     twitter_stream = Stream(auth, TweetListener(conf, topic))
-    query_terms = ['fashion', 'shein', 'zalora', '#fastfashion']
+    query_terms = ['fashion', 'shein', 'zalora', '#fastfashion', 'uniqlo', 'prada', 'gucci', 'armani', 'ralphlauren', 'forever21', 'guess', 'gap', 'drip', 'hypebeast', 'surpreme', 'bape', 'balenciaga', 'muji', 'zara', 'h&m', 'topshop', 'primark']
     twitter_stream.filter(track=query_terms)
 
     #####################################################

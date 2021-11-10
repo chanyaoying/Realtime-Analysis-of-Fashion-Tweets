@@ -125,7 +125,6 @@ def insert_to_DB(batchDF, epochID):
 #####################################
 
 # Function to convert JSON array string to a list
-import json
 
 def parse_json(array_str):
     t = type(array_str)
