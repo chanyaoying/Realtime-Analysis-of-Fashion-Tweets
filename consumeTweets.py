@@ -3,23 +3,38 @@
 #
 # pyspark --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2
 # OR
-# spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2,com.johnsnowlabs.nlp:spark-nlp_2.12:3.3.2 consumeTweets.py
+# $SPARK_HOME/bin/spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2 consumeTweets.py 
+# spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2,com.johnsnowlabs.nlp:spark-nlp_2.12:3.3.2,com.github.fommil.netlib:all:1.1.2 consumeTweets_v1.py
 ####
-import json
-from datetime import datetime
-
-from pymongo import MongoClient
 
 from pyspark.sql import SparkSession
-from pyspark.sql import functions as F
-from pyspark.sql.functions import udf, from_json, col, window, explode, split, transform
-from pyspark.sql.types import StringType, StructType, StructField, ArrayType
-
+from pyspark.sql.types import StringType
+from pymongo import MongoClient
+# from pyspark.sql.functions import udf, from_json, col, window
+# from pyspark.sql.types import StringType, StructType, StructField, ArrayType
+from datetime import datetime
 from textblob import TextBlob
+from pyspark.sql.functions import *
+from pyspark.sql.types import *
+from pyspark.sql import functions as F
+import re
 
+from sparknlp.base import *
+from sparknlp.annotator import *
+from sparknlp.pretrained import PretrainedPipeline
+import sparknlp
 from pyspark.ml import Pipeline
-# from sparknlp.base import *
-# from sparknlp.annotator import *
+from pyspark.ml.feature import CountVectorizer, IDF
+
+# importing some libraries
+import pandas as pd
+import pyspark
+
+# stuff we'll need for text processing
+from nltk.corpus import stopwords
+# stuff we'll need for building the model
+from pyspark.ml.clustering import LDA
+
 
 
 #####################################
@@ -37,7 +52,6 @@ watermark_time = "2 minutes"
 spark = SparkSession \
     .builder \
     .appName("is459") \
-    .config("spark.jars.packages", "com.johnsnowlabs.nlp:spark-nlp_2.12:3.3.2") \
     .getOrCreate()
 
 client = MongoClient('localhost', 27017)
@@ -48,42 +62,47 @@ db = client.realtime_tweets_analysis
 # HELPER FUNCTIONS
 #####################################
 
-# Changing datetime format
-data_process = udf(
-    lambda x: datetime.strftime(
-        datetime.strptime(x, '%a %b %d %H:%M:%S +0000 %Y'), '%Y-%m-%d %H:%M:%S'))
+# define process function
+my_punctuation = '!"$%&\'()*+,-./:;<=>?[\\]^_`{|}~•@â'
+def remove_links(tweet):
+    tweet = re.sub(r'http\S+', '', tweet) 
+    tweet = re.sub(r'bit.ly/\S+', '', tweet) 
+    tweet = tweet.strip('[link]') 
+    return tweet
+def remove_users(tweet):
+    tweet = re.sub('(RT\s@[A-Za-z]+[A-Za-z0-9-_]+)', '', tweet) 
+    tweet = re.sub('(@[A-Za-z]+[A-Za-z0-9-_]+)', '', tweet) 
+    return tweet
+def remove_punctuation(tweet):
+    tweet = re.sub('['+my_punctuation + ']+', ' ', tweet) 
+    return tweet
+def remove_number(tweet):
+    tweet = re.sub('([0-9]+)', '', tweet) 
+    return tweet
+def remove_hashtag(tweet):
+    tweet = re.sub('(#[A-Za-z]+[A-Za-z0-9-_]+)', '', tweet) 
+    return tweet
+    
+# register user defined function
+remove_links=udf(remove_links)
+remove_users=udf(remove_users)
+remove_punctuation=udf(remove_punctuation)
+remove_number=udf(remove_number)
+remove_hashtag=udf(remove_hashtag)
 
-# Text Cleaning
-# pre_process = udf( \
-#     lambda x: re.sub(r'[^A-Za-z\n ]|(http\S+)|(www.\S+)|(@\w+)|(#)|(rt)|(:)', '', \
-#         x.lower().strip()).split(), ArrayType(StringType()))
 
-
-def preprocessing(lines):
-    words = lines.select(
-        explode(split(lines.text, "t_end")).alias("word"), "created_at")
-    words = words.na.replace('', None)
-    words = words.na.drop()
-    words = words.withColumn('word', F.regexp_replace('word', r'http\S+', ''))
-    words = words.withColumn('word', F.regexp_replace('word', '@\w+', ''))
-    words = words.withColumn('word', F.regexp_replace('word', '#', ''))
-    words = words.withColumn('word', F.regexp_replace('word', 'RT', ''))
-    words = words.withColumn('word', F.regexp_replace('word', ':', ''))
+# split lines into words
+def split_lines(lines):
+    words = lines.select(explode(split(lines.text_cleaned, "t_end")).alias("word"), "created_at")
     return words
 
 
 # text classification
 def polarity_detection(text):
     return TextBlob(text).sentiment.polarity
-
-
+    
 def subjectivity_detection(text):
     return TextBlob(text).sentiment.subjectivity
-
-
-def sentiment_detection(text):
-    return TextBlob(text).sentiment
-
 
 def text_classification(words):
     # polarity detection
@@ -91,11 +110,7 @@ def text_classification(words):
     words = words.withColumn("polarity", polarity_detection_udf("word"))
     # subjectivity detection
     subjectivity_detection_udf = udf(subjectivity_detection, StringType())
-    words = words.withColumn(
-        "subjectivity", subjectivity_detection_udf("word"))
-    # sentiment score
-    sentiment_detection_udf = udf(sentiment_detection, StringType())
-    words = words.withColumn("sentiment", sentiment_detection_udf("word"))
+    words = words.withColumn("subjectivity", subjectivity_detection_udf("word"))
 
     return words
 
@@ -109,7 +124,7 @@ def insert_to_DB(batchDF, epochID):
     test_data = {"name": "Zhang Zhenjie", "yes?": True, "epochID": epochID}
     collection = db.topic_modelling
     collection.insert_one(test_data)
-
+    
 
 #####################################
 # PREPROCESSING
@@ -142,6 +157,7 @@ from pyspark.sql.functions import udf
 
 udf_parse_json = udf(lambda str: parse_json(str), json_schema)
 
+
 # Subscribe to 1 kafka topic
 
 schema = StructType(
@@ -151,6 +167,7 @@ schema = StructType(
         StructField("extended_tweet", StringType())
     ]
 )
+
 
 extended_tweet_schema = StructType(
     [
@@ -164,6 +181,7 @@ extended_extended_tweet_schema = StructType(
     ]
 )
 
+
 df = spark \
     .readStream \
     .format("kafka") \
@@ -175,7 +193,6 @@ df = spark \
     .selectExpr("CAST(timestamp AS TIMESTAMP) as timestamp", "CAST(value AS STRING) as message") \
     .withColumn("value", from_json("message", schema)) \
     .select('timestamp', 'value.*') \
-    .withColumn("created_at", data_process("created_at")) \
     .withColumn('entities', from_json('extended_tweet', extended_tweet_schema)) \
     .select('timestamp', 'created_at', 'text', 'entities.*') \
     .withColumn('hashtags', from_json('entities', extended_extended_tweet_schema)) \
@@ -183,11 +200,6 @@ df = spark \
     .select('timestamp', 'created_at', 'text', udf_parse_json('hashtags').alias("hashtags")) \
     .dropna()
 
-    # .withColumn('hashtags', from_json('entities', extended_extended_tweet_schema)) \
-    # .select('timestamp', 'created_at', 'text', 'hashtags.*') \
-    # .select('timestamp', 'created_at', 'text', transform('hashtags', lambda n: from_json(n, extended_tweet_schema))) \
-    # .withColumn('hashtags', from_json('hashtags', extended_extended_extended_tweet_schema)) \
-    # .select('timestamp', 'created_at', 'text', 'hashtags') \
 
 #####################################
 # SENTIMENT SCORING
@@ -205,17 +217,25 @@ df = spark \
     b. Save it in MongoDB, under the collection sentimentScoring
 """
 
-# words = preprocessing(df)
-# words = text_classification(words)
-# words = words.repartition(1)
+# change df to batch_df after setting the window and trigger for SA
+SA_cleaned_df=df.withColumn('text_cleaned', remove_links(df['text']))
+SA_cleaned_df=SA_cleaned_df.withColumn('text_cleaned', remove_users(SA_cleaned_df['text_cleaned']))
+SA_cleaned_df=SA_cleaned_df.withColumn('text_cleaned', remove_punctuation(SA_cleaned_df['text_cleaned']))
+SA_cleaned_df=SA_cleaned_df.withColumn('text_cleaned', remove_number(SA_cleaned_df['text_cleaned']))
+SA_cleaned_df = SA_cleaned_df.select("text_cleaned", "created_at")
 
 
-#!! Write to console (for now)
+words = split_lines(SA_cleaned_df)
+words = text_classification(words)
+words = words.repartition(1)
+
+
 words_query = df \
     .writeStream \
     .format("console") \
     .outputMode("append") \
     .start()
+
 
 
 #####################################
@@ -226,42 +246,122 @@ words_query = df \
 2. Add to topic modelling model
 3. 
 """
+LDA_batches = df.withWatermark('timestamp', watermark_time) \
+    .groupBy(
+        window("timestamp", window_interval, trigger_interval), "text", "created_at"
+    ) \
+    .count()
 
-# documentAssembler = DocumentAssembler() \
-#     .setInputCol('text') \
-#     .setOutputCol('document')
+LDA_cleaned_df=LDA_batches.withColumn('text_cleaned', remove_links(LDA_batches['text']))
+LDA_cleaned_df=LDA_cleaned_df.withColumn('text_cleaned', remove_users(LDA_cleaned_df['text_cleaned']))
+LDA_cleaned_df=LDA_cleaned_df.withColumn('text_cleaned', remove_punctuation(LDA_cleaned_df['text_cleaned']))
+LDA_cleaned_df=LDA_cleaned_df.withColumn('text_cleaned', remove_number(LDA_cleaned_df['text_cleaned']))
+LDA_cleaned_df = LDA_cleaned_df.select("text_cleaned", "created_at")
 
-# sentenceDetector = SentenceDetector() \
-#     .setInputCols(["document"]) \
-#     .setOutputCol("sentence")
+### STEP 1: DATA PREPARATION --------------------------------------------------------------------------------
 
-# regexTokenizer = Tokenizer() \
-#     .setInputCols(["sentence"]) \
-#     .setOutputCol("token")
+# Spark NLP requires the input dataframe or column to be converted to document. 
+document_assembler = DocumentAssembler() \
+    .setInputCol("text_cleaned") \
+    .setOutputCol("document") \
+    .setCleanupMode("shrink")
+# Split sentence to tokens(array)
+tokenizer = Tokenizer() \
+  .setInputCols(["document"]) \
+  .setOutputCol("token")
+# clean unwanted characters and garbage
+normalizer = Normalizer() \
+    .setInputCols(["token"]) \
+    .setOutputCol("normalized")
+# remove stopwords
+stopwords_cleaner = StopWordsCleaner()\
+      .setInputCols("normalized")\
+      .setOutputCol("cleanTokens")\
+      .setCaseSensitive(False)
+# stem the words to bring them to the root form.
+stemmer = Stemmer() \
+    .setInputCols(["cleanTokens"]) \
+    .setOutputCol("stem")
+# Finisher is the most important annotator. Spark NLP adds its own structure when we convert each row in the dataframe to document. Finisher helps us to bring back the expected structure viz. array of tokens.
+finisher = Finisher() \
+    .setInputCols(["stem"]) \
+    .setOutputCols(["tokens"]) \
+    .setOutputAsArray(True) \
+    .setCleanAnnotations(False)
 
-# finisher = Finisher() \
-#     .setInputCols(["token"]) \
-#     .setCleanAnnotations(False)
 
-# pipeline = Pipeline() \
-#     .setStages([
-#         documentAssembler,
-#         sentenceDetector,
-#         regexTokenizer,
-#         finisher
-#     ])
+# We build a ml pipeline so that each phase can be executed in sequence. This pipeline can also be used to test the model. 
+nlp_pipeline = Pipeline(
+    stages=[document_assembler, 
+            tokenizer,
+            normalizer,
+            stopwords_cleaner, 
+            stemmer, 
+            finisher])
 
-# lemmatise
+# train the pipeline
+nlp_model = nlp_pipeline.fit(LDA_cleaned_df)
 
-# # remove stopwords
-# stopwords_cleaner = StopWordsCleaner()\
-#       .setInputCols("normalized")\
-#       .setOutputCol("cleanTokens")\
-#       .setCaseSensitive(False)
+# apply the pipeline to transform dataframe.
+processed_df  = nlp_model.transform(LDA_cleaned_df)
+
+tokens_df = processed_df.select('created_at','tokens')
+
+### STEP 2: FEATURE ENGINEERING ----------------------------------------------------------------------------------
+
+cv = CountVectorizer() \
+    .setInputCol("tokens") \
+    .setOutputCol("features") \
+    .setVocabSize(500) \
+    .setMinDF(3.0)
+
+def build_LDA_model(batchDF, epochID):
+    cv_model = cv.fit(batchDF)
+    vectorized_tokens = cv_model.transform(batchDF)
+    
+    # print(cv_model.vocabulary)
+    # vectorized_tokens \
+    #     .show(truncate=True)
+    print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+    vocab = cv_model.vocabulary
+    print(vocab)
+
+    ### STEP 3: BUILD THE LDA MODEL ----------------------------------------------------------------------------------
+
+    if vocab:
+        print('##############################################################')
+        num_topics = 3
+        # lda = LDA(k=num_topics, maxIter=10)
+        lda = LDA(k=num_topics, maxIter=10)
+        model = lda.fit(vectorized_tokens)
+        topics = model.describeTopics()   
+        topics_rdd = topics.rdd
+        topics_words = topics_rdd \
+            .map(lambda row: row['termIndices']) \
+            .map(lambda idx_list: [vocab[idx] for idx in idx_list]) \
+            .collect()
+        print(topics_words)
+    else:
+        print("empty vocab")
+    print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+
+
+
+# topic_modelling_query = tokens_df.writeStream \
+#     .outputMode("append") \
+#     .foreachBatch(build_LDA_model) \
+#     .start()
 
 # topic_modelling_output = df.writeStream \
 #     .outputMode('append') \
 #     .foreachBatch(insert_to_DB) \
+#     .start()
+
+# for testing purposes
+# topic_modelling_query = vectorized_tokens \
+#     .writeStream \
+#     .format("console") \
+#     .outputMode("append") \
 #     .start()
 
 
@@ -270,4 +370,4 @@ words_query = df \
 # ####################################
 
 words_query.awaitTermination()
-# topic_modelling_output.awaitTermination()
+# topic_modelling_query.awaitTermination()
