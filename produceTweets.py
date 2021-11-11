@@ -11,26 +11,30 @@ from tweepy.streaming import StreamListener
 from tweepy import OAuthHandler
 
 #############################
-## HELPER FUNCTIONS
+# HELPER FUNCTIONS
 #############################
+
 
 def acked(err, msg):
     if err is not None:
-        print("Failed to deliver message: %s: %s" % (str(msg.value()), str(err)))
+        print("Failed to deliver message: %s: %s" %
+              (str(msg.value()), str(err)))
     else:
         print("Message produced: %s" % (str(msg.value())))
+
 
 class TweetListener(StreamListener):
 
     def __init__(self, conf, topic):
-        # initialise the kafka producer 
+        # initialise the kafka producer
         self.producer = Producer(conf)
         self.topic = topic
         self.tweet_count = 0
-        
+
     def on_data(self, data):
         try:
-            self.producer.produce(self.topic, key="key", value=data, callback=acked) 
+            self.producer.produce(self.topic, key="key",
+                                  value=data, callback=acked)
             self.tweet_count += 1
             print(f"No. of tweets: {self.tweet_count}")
         except BaseException as e:
@@ -40,6 +44,7 @@ class TweetListener(StreamListener):
     def on_error(self, status):
         print(status)
         return True
+
 
 def main():
 
@@ -52,26 +57,28 @@ def main():
 
     conf = {'bootstrap.servers': "localhost:9092",
             'client.id': socket.gethostname()}
-            
+
     ###################################
 
-    #TODO: put in .env
-    consumer_key= 'xsoYzI8TDAGyZQBIhaE6gY5ZI'
-    consumer_secret= 'iOYYy64CazvdHiGZZgGpUhguowpPjVzGa59XGlCTF8MaA0xAoI'
-    access_token= '2365205522-hkfTmRYn8qXxBnUqWFE6MV0XQPwr7rYqXDWcFLy'
-    access_token_secret= 'hNfRlQrXmgcC2mIURYTinCZCGuZPrmKNCBRCtxm49inFC'
+    # TODO: put in .env
+    consumer_key = 'xsoYzI8TDAGyZQBIhaE6gY5ZI'
+    consumer_secret = 'iOYYy64CazvdHiGZZgGpUhguowpPjVzGa59XGlCTF8MaA0xAoI'
+    access_token = '2365205522-hkfTmRYn8qXxBnUqWFE6MV0XQPwr7rYqXDWcFLy'
+    access_token_secret = 'hNfRlQrXmgcC2mIURYTinCZCGuZPrmKNCBRCtxm49inFC'
 
     auth = OAuthHandler(consumer_key, consumer_secret)
     auth.set_access_token(access_token, access_token_secret)
 
     # Define the search term and the date_since date as variables
-    
-    #TODO: API Tweepy.stream API to latest version
+
+    # TODO: API Tweepy.stream API to latest version
     twitter_stream = Stream(auth, TweetListener(conf, topic))
-    query_terms = ['fashion', 'shein', 'zalora', '#fastfashion', 'uniqlo', 'prada', 'gucci', 'armani', 'ralphlauren', 'forever21', 'guess', 'gap', 'drip', 'hypebeast', 'surpreme', 'bape', 'balenciaga', 'muji', 'zara', 'h&m', 'topshop', 'primark']
+    query_terms = ['fashion', 'shein', 'zalora', '#fastfashion', 'uniqlo', 'prada', 'gucci', 'armani',
+                   'zara', 'h&m', 'topshop', 'primark', '1111', 'shopee', 'lazada', 'alibaba', 'taobao', 'SEVENTEEN']
     twitter_stream.filter(track=query_terms)
 
     #####################################################
+
 
 if __name__ == "__main__":
     main()
