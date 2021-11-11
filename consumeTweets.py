@@ -33,24 +33,25 @@ from textblob import TextBlob
 
 # Set window and trigger interval
 # window_interval = "2 minutes"
-window_interval = {'sentiment_analysis': '2 minutes',
-                   'topic_modelling': '6 minutes'}
-trigger_interval = {'sentiment_analysis': '1 minutes',
-                    'topic_modelling': '2 minutes'}
+window_interval = {'sentiment_analysis': '20 seconds',
+                   'topic_modelling': '1 minutes'}
+trigger_interval = {'sentiment_analysis': '5 seconds',
+                    'topic_modelling': '20 seconds'}
 
 # Set watermark
-watermark_time = {'sentiment_analysis': '2 minutes',
-                  'topic_modelling': '6 minutes'}
+watermark_time = {'sentiment_analysis': '20 seconds',
+                  'topic_modelling': '1 minutes'}
 
 # Spark Session
 spark = SparkSession \
     .builder \
     .appName("is459") \
-    .config("spark.mongodb.output.uri", "mongodb://127.0.0.1/real_time_fashion_tweets_analysis") \
     .getOrCreate()
 
-# client = MongoClient('localhost', 27017)
-# db = client.realtime_tweets_analysis
+    # .config("spark.mongodb.output.uri", "mongodb://127.0.0.1/real_time_fashion_tweets_analysis") \
+
+client = MongoClient('localhost', 27017)
+db = client.realtime_tweets_analysis
 
 
 #####################################
@@ -153,11 +154,15 @@ remove_hashtag = udf(remove_hashtag)
 #####################################
 
 def insert_SA_to_DB(batchDF, epochID):
-    batchDF \
-        .write \
-        .format('mongo') \
-        .option("collection", "sentiment_analysis") \
-        .save()
+    # batchDF \
+    #     .write \
+    #     .format('mongo') \
+    #     .option("collection", "sentiment_analysis") \
+    #     .save()
+    list_df = map(lambda row: row.asDict(), batchDF.collect())
+    for row in list_df:
+        collection = db.sentiment_analysis
+        collection.insert_one(row)
 
 
 #####################################
@@ -352,15 +357,20 @@ def build_LDA_model(batchDF, epochID):
             .withColumn('token', explode('tokens')) \
             .groupBy('token') \
             .count() \
+
+        wordCountDF = filter_from_topics(wordCountDF, topics_words)
         
         # STEP 6: PUSH INTO MONGO
-        wordCountDF = filter_from_topics(wordCountDF, topics_words) \
-            .write \
-            .format('mongo') \
-            .mode("append") \
-            .option("collection", "topic_modelling") \
-            .save()
-
+        # wordCountDF = filter_from_topics(wordCountDF, topics_words) \
+        #     .write \
+        #     .format('mongo') \
+        #     .mode("append") \
+        #     .option("collection", "topic_modelling") \
+        #     .save()
+        list_df = map(lambda row: row.asDict(), wordCountDF.collect())
+        for row in list_df:
+            collection = db.topic_modelling
+            collection.insert_one(row)
 
 topic_modelling_query = tokens_df.writeStream \
     .outputMode("append") \
