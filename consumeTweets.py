@@ -4,7 +4,7 @@
 # pyspark --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2
 # OR
 # $SPARK_HOME/bin/spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2 consumeTweets.py
-# spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2,com.johnsnowlabs.nlp:spark-nlp_2.12:3.3.2,com.github.fommil.netlib:all:1.1.2 consumeTweets.py
+# spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2,com.johnsnowlabs.nlp:spark-nlp_2.12:3.3.2,com.github.fommil.netlib:all:1.1.2,org.mongodb.spark:mongo-spark-connector_2.12:3.0.1 consumeTweets.py
 ####
 
 from pyspark.sql.functions import udf
@@ -34,22 +34,23 @@ from textblob import TextBlob
 # Set window and trigger interval
 # window_interval = "2 minutes"
 window_interval = {'sentiment_analysis': '2 minutes',
-                   'topic_modelling': '2 minutes'}
+                   'topic_modelling': '6 minutes'}
 trigger_interval = {'sentiment_analysis': '1 minutes',
-                    'topic_modelling': '1 minutes'}
+                    'topic_modelling': '2 minutes'}
 
 # Set watermark
 watermark_time = {'sentiment_analysis': '2 minutes',
-                  'topic_modelling': '2 minutes'}
+                  'topic_modelling': '6 minutes'}
 
 # Spark Session
 spark = SparkSession \
     .builder \
     .appName("is459") \
+    .config("spark.mongodb.output.uri", "mongodb://127.0.0.1/real_time_fashion_tweets_analysis") \
     .getOrCreate()
 
-client = MongoClient('localhost', 27017)
-db = client.realtime_tweets_analysis
+# client = MongoClient('localhost', 27017)
+# db = client.realtime_tweets_analysis
 
 
 #####################################
@@ -131,6 +132,14 @@ def parse_json(array_str):
         return hashtags_array
 
 
+def filter_from_topics(wordcountDF, topic_words):
+    word_list = []
+    [word_list.extend(top10) for top10 in topic_words]
+    wordcountDF = wordcountDF.filter(wordcountDF.token.isin(word_list))
+    wordcountDF = wordcountDF.withColumn('topic', udf(lambda token: [topic_words.index(n) + 1 for n in topic_words if token in topic_words[topic_words.index(n)]][0], IntegerType())('token'))
+    return wordcountDF
+
+
 # register user defined function
 remove_links = udf(remove_links)
 remove_users = udf(remove_users)
@@ -197,35 +206,35 @@ df = spark \
     b. Save it in MongoDB, under the collection sentimentScoring
 """
 
-SA_cleaned_df = df.dropna()\
-    .withColumn('text_cleaned', remove_links(df['text']))
-SA_cleaned_df = SA_cleaned_df.withColumn(
-    'text_cleaned', remove_users(SA_cleaned_df['text_cleaned']))
-SA_cleaned_df = SA_cleaned_df.withColumn(
-    'text_cleaned', remove_punctuation(SA_cleaned_df['text_cleaned']))
-SA_cleaned_df = SA_cleaned_df.withColumn(
-    'text_cleaned', remove_number(SA_cleaned_df['text_cleaned']))
-SA_cleaned_df = SA_cleaned_df.select("text_cleaned", "created_at", "hashtags", "timestamp")
+# SA_cleaned_df = df.dropna()\
+#     .withColumn('text_cleaned', remove_links(df['text']))
+# SA_cleaned_df = SA_cleaned_df.withColumn(
+#     'text_cleaned', remove_users(SA_cleaned_df['text_cleaned']))
+# SA_cleaned_df = SA_cleaned_df.withColumn(
+#     'text_cleaned', remove_punctuation(SA_cleaned_df['text_cleaned']))
+# SA_cleaned_df = SA_cleaned_df.withColumn(
+#     'text_cleaned', remove_number(SA_cleaned_df['text_cleaned']))
+# SA_cleaned_df = SA_cleaned_df.select("text_cleaned", "created_at", "hashtags", "timestamp")
 
-SA_cleaned_df = SA_cleaned_df.select(
-    "text_cleaned", "created_at", explode(SA_cleaned_df.hashtags).alias("hashtag"), "timestamp")
+# SA_cleaned_df = SA_cleaned_df.select(
+#     "text_cleaned", "created_at", explode(SA_cleaned_df.hashtags).alias("hashtag"), "timestamp")
 
-words = split_lines(SA_cleaned_df)
-words = text_classification(words)
-words = words.repartition(1)
+# words = split_lines(SA_cleaned_df)
+# words = text_classification(words)
+# words = words.repartition(1)
 
-SA_batches = words.withWatermark('timestamp', watermark_time['sentiment_analysis']) \
-    .groupBy(
-        window("timestamp", window_interval['sentiment_analysis'],
-               trigger_interval['sentiment_analysis']), "hashtag"
-) \
-    .agg(F.mean('polarity'))
+# SA_batches = words.withWatermark('timestamp', watermark_time['sentiment_analysis']) \
+#     .groupBy(
+#         window("timestamp", window_interval['sentiment_analysis'],
+#                trigger_interval['sentiment_analysis']), "hashtag"
+# ) \
+#     .agg(F.mean('polarity'))
 
-words_query = SA_batches \
-    .writeStream \
-    .format("console") \
-    .outputMode("append") \
-    .start()
+# words_query = SA_batches \
+#     .writeStream \
+#     .format("console") \
+#     .outputMode("append") \
+#     .start()
 
 
 #####################################
@@ -331,10 +340,23 @@ def build_LDA_model(batchDF, epochID):
             .map(lambda idx_list: [vocab[idx] for idx in idx_list]) \
             .collect()
 
-        print(topics_words)
+        # STEP 5: GET THE COUNT OF WORDS IN THE 3 TOPICS
+        wordCountDF = batchDF \
+            .select('tokens') \
+            .withColumn('token', explode('tokens')) \
+            .groupBy('token') \
+            .count() \
+        
+        # STEP 6: PUSH INTO MONGO
+        wordCountDF = filter_from_topics(wordCountDF, topics_words) \
+            .write \
+            .format('mongo') \
+            .mode("append") \
+            .option("collection", "topic_modelling") \
+            .save()
 
-    # TODO:
-    # STEP 4: PUSH TO MONGODB
+
+    
 
 
 topic_modelling_query = tokens_df.writeStream \
@@ -347,5 +369,5 @@ topic_modelling_query = tokens_df.writeStream \
 # # Await termination for both queries
 # ####################################
 
-words_query.awaitTermination()
+# words_query.awaitTermination()
 topic_modelling_query.awaitTermination()
