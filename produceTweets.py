@@ -58,7 +58,7 @@ def main():
     conf = {'bootstrap.servers': "localhost:9092",
             'client.id': socket.gethostname()}
 
-    ###################################
+    #####################################################
 
     # TODO: put in .env
     consumer_key = 'xsoYzI8TDAGyZQBIhaE6gY5ZI'
@@ -70,8 +70,6 @@ def main():
     auth.set_access_token(access_token, access_token_secret)
 
     # Define the search term and the date_since date as variables
-
-    # TODO: API Tweepy.stream API to latest version
     twitter_stream = Stream(auth, TweetListener(conf, topic))
     query_terms = ['fashion', 'shein', 'zalora', '#fastfashion', 'uniqlo', 'prada', 'gucci', 'armani',
                    'zara', 'h&m', 'topshop', 'primark', '1111', 'shopee', 'lazada', 'alibaba', 'taobao', 'SEVENTEEN']

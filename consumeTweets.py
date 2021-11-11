@@ -1,21 +1,19 @@
 ####
 # TO RUN:
 #
-# pyspark --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2
-# OR
-# $SPARK_HOME/bin/spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2 consumeTweets.py
-# spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2,com.johnsnowlabs.nlp:spark-nlp_2.12:3.3.2,com.github.fommil.netlib:all:1.1.2,org.mongodb.spark:mongo-spark-connector_2.12:3.0.1 consumeTweets.py
+# spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2,com.johnsnowlabs.nlp:spark-nlp_2.12:3.3.2,com.github.fommil.netlib:all:1.1.2 consumeTweets.py
 ####
 
-from pyspark.sql.functions import udf
 import json
 import re
 
 from pyspark.sql import SparkSession
+from pyspark.sql import functions as F
 from pyspark.sql.types import StringType
 from pyspark.sql.functions import *
-from pyspark.sql import functions as F
+from pyspark.sql.functions import udf
 from pyspark.sql.types import *
+
 from pyspark.ml import Pipeline
 from pyspark.ml.feature import CountVectorizer
 from pyspark.ml.clustering import LDA
@@ -32,7 +30,6 @@ from textblob import TextBlob
 #####################################
 
 # Set window and trigger interval
-# window_interval = "2 minutes"
 window_interval = {'sentiment_analysis': '20 seconds',
                    'topic_modelling': '1 minutes'}
 trigger_interval = {'sentiment_analysis': '5 seconds',
@@ -48,7 +45,8 @@ spark = SparkSession \
     .appName("is459") \
     .getOrCreate()
 
-    # .config("spark.mongodb.output.uri", "mongodb://127.0.0.1/real_time_fashion_tweets_analysis") \
+# Mongo connector
+# .config("spark.mongodb.output.uri", "mongodb://127.0.0.1/real_time_fashion_tweets_analysis") \
 
 client = MongoClient('localhost', 27017)
 db = client.realtime_tweets_analysis
@@ -58,7 +56,6 @@ db = client.realtime_tweets_analysis
 # HELPER FUNCTIONS
 #####################################
 
-# define process function
 my_punctuation = '!"$%&\'()*+,-./:;<=>?[\\]^_`{|}~•@â'
 
 
@@ -114,7 +111,6 @@ def text_classification(words):
     subjectivity_detection_udf = udf(subjectivity_detection, StringType())
     words = words.withColumn(
         "subjectivity", subjectivity_detection_udf("word"))
-
     return words
 
 
@@ -137,7 +133,8 @@ def filter_from_topics(wordcountDF, topic_words):
     word_list = []
     [word_list.extend(top10) for top10 in topic_words]
     wordcountDF = wordcountDF.filter(wordcountDF.token.isin(word_list))
-    wordcountDF = wordcountDF.withColumn('topic', udf(lambda token: [topic_words.index(n) + 1 for n in topic_words if token in topic_words[topic_words.index(n)]][0], IntegerType())('token'))
+    wordcountDF = wordcountDF.withColumn('topic', udf(lambda token: [topic_words.index(
+        n) + 1 for n in topic_words if token in topic_words[topic_words.index(n)]][0], IntegerType())('token'))
     return wordcountDF
 
 
@@ -147,22 +144,6 @@ remove_users = udf(remove_users)
 remove_punctuation = udf(remove_punctuation)
 remove_number = udf(remove_number)
 remove_hashtag = udf(remove_hashtag)
-
-
-#####################################
-# FOR EACH BATCH FUNCTION
-#####################################
-
-def insert_SA_to_DB(batchDF, epochID):
-    # batchDF \
-    #     .write \
-    #     .format('mongo') \
-    #     .option("collection", "sentiment_analysis") \
-    #     .save()
-    list_df = map(lambda row: row.asDict(), batchDF.collect())
-    for row in list_df:
-        collection = db.sentiment_analysis
-        collection.insert_one(row)
 
 
 #####################################
@@ -220,7 +201,8 @@ SA_cleaned_df = SA_cleaned_df.withColumn(
     'text_cleaned', remove_punctuation(SA_cleaned_df['text_cleaned']))
 SA_cleaned_df = SA_cleaned_df.withColumn(
     'text_cleaned', remove_number(SA_cleaned_df['text_cleaned']))
-SA_cleaned_df = SA_cleaned_df.select("text_cleaned", "created_at", "hashtags", "timestamp")
+SA_cleaned_df = SA_cleaned_df.select(
+    "text_cleaned", "created_at", "hashtags", "timestamp")
 
 SA_cleaned_df = SA_cleaned_df.select(
     "text_cleaned", "created_at", explode(SA_cleaned_df.hashtags).alias("hashtag"), "timestamp")
@@ -236,16 +218,37 @@ SA_batches = words.withWatermark('timestamp', watermark_time['sentiment_analysis
 ) \
     .agg(F.mean('polarity'))
 
+############################################
+# SENTIMENT SCORING: FOR EACH BATCH FUNCTION
+############################################
+
+
+def insert_SA_to_DB(batchDF, epochID):
+    list_df = map(lambda row: row.asDict(), batchDF.collect())
+    for row in list_df:
+        collection = db.sentiment_analysis
+        collection.insert_one(row)
+    # batchDF \
+    #     .write \
+    #     .format('mongo') \
+    #     .option("collection", "sentiment_analysis") \
+    #     .save()
+
+
+############################################
+# SENTIMENT SCORING: SINK
+############################################
+
 words_query = SA_batches \
     .writeStream \
     .outputMode('append') \
     .foreachBatch(insert_SA_to_DB) \
     .start()
-    # .write \
-    # .format("mongo") \
-    # .outputMode("append") \
-    # .option("collection", "sentiment_analysis") \
-    # .save()
+# .write \
+# .format("mongo") \
+# .outputMode("append") \
+# .option("collection", "sentiment_analysis") \
+# .save()
 
 
 #####################################
@@ -257,7 +260,7 @@ TODO
 2. Add to topic modelling model
 3. 
 """
-
+# STEP 1: BATCHING
 LDA_batches = df.withWatermark('timestamp', watermark_time['topic_modelling']) \
     .groupBy(
         window("timestamp", window_interval['topic_modelling'],
@@ -265,6 +268,7 @@ LDA_batches = df.withWatermark('timestamp', watermark_time['topic_modelling']) \
 ) \
     .count()
 
+# STEP 2: DATA CLEANING
 LDA_cleaned_df = LDA_batches.withColumn(
     'text_cleaned', remove_links(LDA_batches['text']))
 LDA_cleaned_df = LDA_cleaned_df.withColumn(
@@ -275,8 +279,7 @@ LDA_cleaned_df = LDA_cleaned_df.withColumn(
     'text_cleaned', remove_number(LDA_cleaned_df['text_cleaned']))
 LDA_cleaned_df = LDA_cleaned_df.select("text_cleaned", "created_at")
 
-# STEP 1: DATA PREPARATION --------------------------------------------------------------------------------
-
+# STEP 3: DATA PREPARATION
 # Spark NLP requires the input dataframe or column to be converted to document.
 document_assembler = DocumentAssembler() \
     .setInputCol("text_cleaned") \
@@ -299,15 +302,14 @@ stopwords_cleaner = StopWordsCleaner()\
 stemmer = Stemmer() \
     .setInputCols(["cleanTokens"]) \
     .setOutputCol("stem")
-# Finisher is the most important annotator. Spark NLP adds its own structure when we convert each row in the dataframe to document. Finisher helps us to bring back the expected structure viz. array of tokens.
+# Finisher is the most important annotator. Spark NLP adds its own structure when we convert each row in the dataframe to document.
+# Finisher helps us to bring back the expected structure viz. array of tokens.
 finisher = Finisher() \
     .setInputCols(["stem"]) \
     .setOutputCols(["tokens"]) \
     .setOutputAsArray(True) \
     .setCleanAnnotations(False)
 
-
-# We build a ml pipeline so that each phase can be executed in sequence. This pipeline can also be used to test the model.
 nlp_pipeline = Pipeline(
     stages=[document_assembler,
             tokenizer,
@@ -324,8 +326,7 @@ processed_df = nlp_model.transform(LDA_cleaned_df)
 
 tokens_df = processed_df.select('created_at', 'tokens')
 
-# STEP 2: FEATURE ENGINEERING
-
+# STEP 3: FEATURE ENGINEERING
 cv = CountVectorizer() \
     .setInputCol("tokens") \
     .setOutputCol("features") \
@@ -333,14 +334,18 @@ cv = CountVectorizer() \
     .setMinDF(3.0)
 
 
+############################################
+# TOPIC MODELLING: FOR EACH BATCH FUNCTION
+############################################
+
 def build_LDA_model(batchDF, epochID):
     cv_model = cv.fit(batchDF)
     vectorized_tokens = cv_model.transform(batchDF)
     vocab = cv_model.vocabulary
 
-    # STEP 3: BUILD THE LDA MODEL
-
+    # STEP 4: BUILD THE LDA MODEL
     if vocab:
+        # we are only concerned with 3 topics
         num_topics = 3
         lda = LDA(k=num_topics, maxIter=10)
         model = lda.fit(vectorized_tokens)
@@ -356,21 +361,25 @@ def build_LDA_model(batchDF, epochID):
             .select('tokens') \
             .withColumn('token', explode('tokens')) \
             .groupBy('token') \
-            .count() \
-
+            .count()
         wordCountDF = filter_from_topics(wordCountDF, topics_words)
-        
+
         # STEP 6: PUSH INTO MONGO
+        list_df = map(lambda row: row.asDict(), wordCountDF.collect())
+        for row in list_df:
+            collection = db.topic_modelling
+            collection.insert_one(row)
         # wordCountDF = filter_from_topics(wordCountDF, topics_words) \
         #     .write \
         #     .format('mongo') \
         #     .mode("append") \
         #     .option("collection", "topic_modelling") \
         #     .save()
-        list_df = map(lambda row: row.asDict(), wordCountDF.collect())
-        for row in list_df:
-            collection = db.topic_modelling
-            collection.insert_one(row)
+
+
+#####################################
+# TOPIC MODELLING: SINK
+#####################################
 
 topic_modelling_query = tokens_df.writeStream \
     .outputMode("append") \
@@ -378,9 +387,9 @@ topic_modelling_query = tokens_df.writeStream \
     .start()
 
 
-# ####################################
-# # Await termination for both queries
-# ####################################
+####################################
+# Await termination for both queries
+####################################
 
 words_query.awaitTermination()
 topic_modelling_query.awaitTermination()
