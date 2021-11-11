@@ -152,11 +152,12 @@ remove_hashtag = udf(remove_hashtag)
 # FOR EACH BATCH FUNCTION
 #####################################
 
-def insert_to_DB(batchDF, epochID):
-    del batchDF
-    test_data = {"name": "Zhang Zhenjie", "yes?": True, "epochID": epochID}
-    collection = db.topic_modelling
-    collection.insert_one(test_data)
+def insert_SA_to_DB(batchDF, epochID):
+    batchDF \
+        .write \
+        .format('mongo') \
+        .option("collection", "sentiment_analysis") \
+        .save()
 
 
 #####################################
@@ -206,35 +207,40 @@ df = spark \
     b. Save it in MongoDB, under the collection sentimentScoring
 """
 
-# SA_cleaned_df = df.dropna()\
-#     .withColumn('text_cleaned', remove_links(df['text']))
-# SA_cleaned_df = SA_cleaned_df.withColumn(
-#     'text_cleaned', remove_users(SA_cleaned_df['text_cleaned']))
-# SA_cleaned_df = SA_cleaned_df.withColumn(
-#     'text_cleaned', remove_punctuation(SA_cleaned_df['text_cleaned']))
-# SA_cleaned_df = SA_cleaned_df.withColumn(
-#     'text_cleaned', remove_number(SA_cleaned_df['text_cleaned']))
-# SA_cleaned_df = SA_cleaned_df.select("text_cleaned", "created_at", "hashtags", "timestamp")
+SA_cleaned_df = df.dropna()\
+    .withColumn('text_cleaned', remove_links(df['text']))
+SA_cleaned_df = SA_cleaned_df.withColumn(
+    'text_cleaned', remove_users(SA_cleaned_df['text_cleaned']))
+SA_cleaned_df = SA_cleaned_df.withColumn(
+    'text_cleaned', remove_punctuation(SA_cleaned_df['text_cleaned']))
+SA_cleaned_df = SA_cleaned_df.withColumn(
+    'text_cleaned', remove_number(SA_cleaned_df['text_cleaned']))
+SA_cleaned_df = SA_cleaned_df.select("text_cleaned", "created_at", "hashtags", "timestamp")
 
-# SA_cleaned_df = SA_cleaned_df.select(
-#     "text_cleaned", "created_at", explode(SA_cleaned_df.hashtags).alias("hashtag"), "timestamp")
+SA_cleaned_df = SA_cleaned_df.select(
+    "text_cleaned", "created_at", explode(SA_cleaned_df.hashtags).alias("hashtag"), "timestamp")
 
-# words = split_lines(SA_cleaned_df)
-# words = text_classification(words)
-# words = words.repartition(1)
+words = split_lines(SA_cleaned_df)
+words = text_classification(words)
+words = words.repartition(1)
 
-# SA_batches = words.withWatermark('timestamp', watermark_time['sentiment_analysis']) \
-#     .groupBy(
-#         window("timestamp", window_interval['sentiment_analysis'],
-#                trigger_interval['sentiment_analysis']), "hashtag"
-# ) \
-#     .agg(F.mean('polarity'))
+SA_batches = words.withWatermark('timestamp', watermark_time['sentiment_analysis']) \
+    .groupBy(
+        window("timestamp", window_interval['sentiment_analysis'],
+               trigger_interval['sentiment_analysis']), "hashtag"
+) \
+    .agg(F.mean('polarity'))
 
-# words_query = SA_batches \
-#     .writeStream \
-#     .format("console") \
-#     .outputMode("append") \
-#     .start()
+words_query = SA_batches \
+    .writeStream \
+    .outputMode('append') \
+    .foreachBatch(insert_SA_to_DB) \
+    .start()
+    # .write \
+    # .format("mongo") \
+    # .outputMode("append") \
+    # .option("collection", "sentiment_analysis") \
+    # .save()
 
 
 #####################################
@@ -356,9 +362,6 @@ def build_LDA_model(batchDF, epochID):
             .save()
 
 
-    
-
-
 topic_modelling_query = tokens_df.writeStream \
     .outputMode("append") \
     .foreachBatch(build_LDA_model) \
@@ -369,5 +372,5 @@ topic_modelling_query = tokens_df.writeStream \
 # # Await termination for both queries
 # ####################################
 
-# words_query.awaitTermination()
+words_query.awaitTermination()
 topic_modelling_query.awaitTermination()
