@@ -1,8 +1,7 @@
 # IS459-Project
 Real-time Analysis of Fast Fashion Trends from Twitter
 
-TODO: update drill & tableau
-This solution provides a end to end pipeline for real time streaming tweets analysis with quick visualizations generated which provides real time tracking of twitter user behavior and sentiment. It is easily integrable and domain agnostic to other use cases as list of topics can be specified to any target field.
+This solution provides an end-to-end pipeline for real time streaming of tweets for text analysis, with quick visualisations. This provides real time tracking of twitter user behavior and sentiments. Our architecture is easily integrable, and it is domain-agnostic as the list of topics can be specified to any target field.
 
 ## Note
 1. The Tweepy API allows us to listen to 1% of all tweets in real time.
@@ -44,18 +43,23 @@ Install Python packages via pip
 ```sh
 pip install -r requirements.txt
 ```
-#### Kafka + Zookeeper + Apache Drill + MongoDB
+#### Kafka + Zookeeper + MongoDB
 We are assuming that you have MongoDB, Kafka and Zookeeper installed.
 
 Alternatively, you can run them on docker containers. A `docker-compose` file is provided.
 ```sh
 docker-compose up
 ```
+#### Apache Drill
+Regardless of whether docker is used, the Drill ODBC driver will need to be installed for the Apache Drill-Tableau connector.
 
-To install Apache drill manually,
-refer to this official installation guide.
-## Usage (edit from here @bbhui)
-Make sure Hadoop, Zookeeper, Kafka, Apache Drill and MongoDB are running
+[Install Drill ODBC driver](https://drill.apache.org/docs/installing-the-driver-on-windows/)
+
+If docker-compose is not being used, we have to manually install it.
+
+[Install Apache Drill](https://drill.apache.org/docs/embedded-mode-prerequisites/)
+## Usage
+Make sure Hadoop FS, Zookeeper, Kafka, Apache Drill and MongoDB are running.
 
 ### Kafka Producer
 Open a new WSL Terminal and run the kafka producer.
@@ -70,17 +74,72 @@ $SPARK_HOME/bin/spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.
 ```
 
 ### Apache Drill
-TODO: update (@yao)
+We have to add the mongo storage plugin on drill.
+1. Navigate to http://localhost:8047
+2. Go to Storage
+3. Enable the mongo plugin.
+4. If you are using the Drill Docker Image, update the connection of mongoDB to `mongodb://MongoDB:27017/`.
 
+Make sure that both ports 8047 and 31010 are being used by Apache Drill.
 ### Tableau
-TODO: update (@yao)
+[You may refer to this guide.](https://help.tableau.com/current/pro/desktop/en-us/examples_apachedrill.htm)
 
-### Window and Trigger Interval
-Window is the time interval that tweets are being aggregated and trigger is the time interval the aggregation updates from the stream. These factors can be easily modified in the `consumeTweets.py` file under `Global Constants`.
-Currently, window interval is set to 2 minutes, while trigger interval is set to 1 minute.
+Connect using the data connector
+1. Start `Fashion Viz.twb` and under Connect, select Apache Drill. For a complete list of data connections, select More under To a Server.
+2. Select Direct connection (to http://localhost:31010)
+3. Select No Authentication
+4. For the initial SQL statement you can put `show schemas` (without semicolons)
+5. Sign In
 
+Data source page
+1. On the data source page, under Schema, select `mongodb.realtime_tweets_analysis`. This is the name of our MongoDB database.
+2. Drag the 2 tables (MongoDB collections) `sentiment_analysis` and `topic_modelling` to the middle of the page.
+3. Link them by id_.
+4. Make sure they are live connections (as opposed to data extracts)
+4. Select the sheets at the bottom of the page to see the visualisations.
+
+## Notes
+
+### Tweepy API
+This API exposes 1% of all tweets being tweeted in real time. `produceTweets.py` creates a listener that receives all tweets according to our query terms. For further information, see this [tutorial](https://developer.twitter.com/en/docs/tutorials/consuming-streaming-data).
+
+The credentials are available in plain text in the python script. There is no credit card attached to this, we are unlikely to hit the rate limit as long as we do not leave it running the whole day.
+
+Please note that we are using [`v3.10.0`](https://docs.tweepy.org/en/v3.10.0/). The latest version is [`v4.3.0`](https://docs.tweepy.org/en/v4.3.0/).
 ### Query Terms
-For our current project, we are focusing on the fashion industry, thus, the query terms set to draw tweets are terms related to fashion. These factors can be easily modified in the `produceTweets.py` file.
+For our current project, we are focusing on the fashion industry, thus, the query terms set to draw tweets are terms related to fashion. These factors can be easily modified in the `produceTweets.py` file under `query_terms`.
+### Throughput Analysis
+Window is the time interval that tweets are being aggregated and trigger is the time interval the aggregation updates from the stream. These factors can be easily modified in the `consumeTweets.py` file under `#Global Constants`.
+
+We have determined that smallest window/trigger intervals based on the number of tweets coming in vs the number of outputs. This is because for the LDA model for topic modelling, there is a required number of tokens per window in order to generate the vocabularies table.
+
+These are the current settings:
+```python
+# Set window and trigger interval
+window_interval = {'sentiment_analysis': '5 seconds',
+                   'topic_modelling': '1 minutes'}
+trigger_interval = {'sentiment_analysis': '5 seconds',
+                    'topic_modelling': '20 seconds'}
+
+# Set watermark
+watermark_time = {'sentiment_analysis': '5 seconds',
+                  'topic_modelling': '1 minutes'}
+```
+### Apache Drill Custom SQL statements
+As our database gets filled with the outputs, we use SQL statements to query the amount of data that we want in our visualisation. In our workbook we are sorting them by ID, then taking the latest 60. This would not cause Tableau to lag.
+
+```SQL
+SELECT `topic_modelling`.`_id` AS `_id (topic_modelling)`,
+  `topic_modelling`.`token` AS `token`,
+  `topic_modelling`.`count` AS `count`,
+  `topic_modelling`.`topic` AS `topic`
+FROM `mongo.realtime_tweets_analysis`.`topic_modelling` `topic_modelling`
+order by `_id (topic_modelling)` desc
+limit 60
+```
+### Sentiment Analysis Pipeline
+
+### Topic Modelling Pipeline
 
 ## License
 Distributed under the MIT License. See `LICENSE` for more information.
@@ -89,6 +148,8 @@ Distributed under the MIT License. See `LICENSE` for more information.
 * [Starting code on Prof Zhang's IS459 repository](https://github.com/ZhangZhenjie/SMU-IS459)
 * [Spark Structured Streaming Programming Guide](https://spark.apache.org/docs/latest/structured-streaming-programming-guide.html)
 * [Spark Structured Streaming + Kafka Integration Guide](https://spark.apache.org/docs/latest/structured-streaming-kafka-integration.html)
+
+!! Acknowledgements will be updated
 
 
 
