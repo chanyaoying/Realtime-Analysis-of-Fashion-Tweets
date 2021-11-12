@@ -30,13 +30,13 @@ from textblob import TextBlob
 #####################################
 
 # Set window and trigger interval
-window_interval = {'sentiment_analysis': '20 seconds',
+window_interval = {'sentiment_analysis': '5 seconds',
                    'topic_modelling': '1 minutes'}
 trigger_interval = {'sentiment_analysis': '5 seconds',
                     'topic_modelling': '20 seconds'}
 
 # Set watermark
-watermark_time = {'sentiment_analysis': '20 seconds',
+watermark_time = {'sentiment_analysis': '5 seconds',
                   'topic_modelling': '1 minutes'}
 
 # Spark Session
