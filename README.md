@@ -49,7 +49,7 @@ pip install -r requirements.txt
 #### Kafka + Zookeeper + MongoDB
 We are assuming that you have MongoDB, Kafka and Zookeeper installed.
 
-Alternatively, you can run them on docker containers. A `docker-compose` file is provided.
+Alternatively, you can run them on docker containers. A `docker-compose` file is provided. Docker needs to be installed and started before running the command below:
 ```sh
 docker-compose up
 ```
@@ -140,9 +140,18 @@ FROM `mongo.realtime_tweets_analysis`.`topic_modelling` `topic_modelling`
 order by `_id (topic_modelling)` desc
 limit 60
 ```
+
+### Data Cleaning
+Before moving on to data preparation for respective model building, we performed a series of data cleaning using user defined funcions for every tweet, which includes a series of steps to remove links, user names, punctuation, numbers and hashtags from twitter content.
+
 ### Sentiment Analysis Pipeline
+The model takes in text_cleaned and created_at columns and then applies sentiment analysis using textblob to generate polarity and subjectivity scores of each tweet within the range [0,1]. This is being done by user defined function text_classification. 
+At the end of the model, we group all the tweets by hashtags and generate the aggregate mean polarity for every hashtag in each window out of all the windows we have batched.
 
 ### Topic Modelling Pipeline
+Topic modeling takes in text_cleaned and created_at columns and pass the data through a pre-processing pipeline using sparkNLP. This pipeline consists of document assembler, tokenizer, normalizer, stopwords cleaner, stemmer and finisher. preprocessed data in token format will then be passed through feature engineering using spark MLlib's CountVectorizer to generate features specific to Latent Dirichlet Allocation (LDA) model vacabulary to perform topic modeling. 
+When building up topic modeling, we specify the number of topics we want to get as 3 due to the length of window for batching data. This can be adjusted under variable num_topics. We set the number of maximum iterations to be 10 in order to fit the case for real time analysis.
+At the end of the model, we find out the count of each unique token in all batched windows grouped by each topic. The dataframe is then sent to mongoDB for further data visualizations using Tableau.
 
 ## License
 Distributed under the MIT License. See `LICENSE` for more information.
