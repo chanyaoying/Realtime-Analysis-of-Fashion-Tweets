@@ -1,4 +1,7 @@
 # IS459-Project
+
+_AY2021-2022 Semester 1, IS459 G1, Group 7_
+
 Real-time Analysis of Fast Fashion Trends from Twitter
 
 This solution provides an end-to-end pipeline for real time streaming of tweets for text analysis, with quick visualisations. This provides real time tracking of twitter user behavior and sentiments. Our architecture is easily integrable, and it is domain-agnostic as the list of topics can be specified to any target field.
@@ -151,7 +154,13 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 !! Acknowledgements will be updated
 
+## Group Members:
 
+- CHAN Yao Ying, yychan.2019@scis.smu.edu.sg
+- Bryan HUI Hon Yu, bryan.hui.2019@scis.smu.edu.sg
+- Kenny GOH Ju Lin, kenny.goh.2019@scis.smu.edu.sg
+- YANG Zhouyifan, zyfyang.2018@scis.smu.edu.sg
+- Yash GADODIA, yashgadodia.2019@scis.smu.edu.sg
 
 
 
