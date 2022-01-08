@@ -1,4 +1,4 @@
-# IS459-Project
+# Realtime Analysis of Fashion Trends via Tweets
 
 _AY2021-2022 Semester 1, IS459 G1, Group 7_
 
